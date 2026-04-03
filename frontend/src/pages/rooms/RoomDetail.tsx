@@ -14,6 +14,29 @@ import { roomService } from '@/services/api';
 import type { Room } from '@/types';
 import { useAuthStore } from '@/store/authStore';
 
+type RoomDetailApiResponse = {
+  status?: string;
+  data?: {
+    id: number;
+    numero: string;
+    tipo?: number;
+    tipo_nombre?: string;
+    tipo_detalle?: {
+      nombre?: string;
+      capacidad_maxima?: number;
+      amenities?: string[];
+    };
+    capacidad_maxima?: number;
+    amenities?: string[];
+    piso: number;
+    estado: Room['estado'];
+    precio_actual: number;
+    descripcion?: string;
+    caracteristicas?: Record<string, unknown>;
+    activa: boolean;
+  };
+};
+
 const RoomDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -31,9 +54,34 @@ const RoomDetail = () => {
   const loadRoom = async (roomId: number) => {
     try {
       const response = await roomService.getById(roomId);
-      setRoom(response.data.data);
+      const payload = response.data as RoomDetailApiResponse | RoomDetailApiResponse['data'];
+      const rawRoom = (payload as RoomDetailApiResponse)?.data ?? payload;
+
+      if (!rawRoom) {
+        setRoom(null);
+        return;
+      }
+
+      const normalizedRoom: Room = {
+        id: rawRoom.id,
+        numero: rawRoom.numero,
+        tipo_id: rawRoom.tipo ?? 0,
+        tipo_nombre: rawRoom.tipo_nombre ?? rawRoom.tipo_detalle?.nombre,
+        capacidad_maxima:
+          rawRoom.capacidad_maxima ?? rawRoom.tipo_detalle?.capacidad_maxima,
+        amenities: rawRoom.amenities ?? rawRoom.tipo_detalle?.amenities,
+        piso: rawRoom.piso,
+        estado: rawRoom.estado,
+        precio_actual: rawRoom.precio_actual,
+        descripcion: rawRoom.descripcion,
+        caracteristicas: rawRoom.caracteristicas,
+        activa: rawRoom.activa,
+      };
+
+      setRoom(normalizedRoom);
     } catch (error) {
       console.error('Error loading room:', error);
+      setRoom(null);
     } finally {
       setLoading(false);
     }
@@ -78,7 +126,11 @@ const RoomDetail = () => {
       mantenimiento: 'Mantenimiento',
       limpieza: 'Limpieza',
     };
-    return <span className={styles[estado] || 'badge-gray'}>{labels[estado]}</span>;
+    return (
+      <span className={styles[estado] || 'badge-gray'}>
+        {labels[estado] || estado}
+      </span>
+    );
   };
 
   if (loading) {

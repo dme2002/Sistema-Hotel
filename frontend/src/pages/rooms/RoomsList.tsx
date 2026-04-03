@@ -1,17 +1,16 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { BedDouble, Plus, Filter } from 'lucide-react';
 import { roomService } from '@/services/api';
 import type { Room } from '@/types';
 import { useAuthStore } from '@/store/authStore';
 import CreateRoomModal from '@/components/CreateRoomModal';
-import RoomDetailModal from '@/components/RoomDetailModal';
 
 const RoomsList = () => {
   const { isAdmin } = useAuthStore();
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
   const [filters, setFilters] = useState({ estado: '', piso: '' });
 
   useEffect(() => {
@@ -86,13 +85,6 @@ const RoomsList = () => {
         onClose={() => setIsCreateOpen(false)}
         onSuccess={loadRooms}
       />
-      <RoomDetailModal
-        room={selectedRoom}
-        isOpen={!!selectedRoom}
-        onClose={() => setSelectedRoom(null)}
-        onUpdated={loadRooms}
-        isAdmin={isAdmin()}
-      />
 
       {/* Filters */}
       <div className="card p-4">
@@ -125,9 +117,9 @@ const RoomsList = () => {
       {/* Rooms Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {rooms.map((room) => (
-          <button
+          <Link
             key={room.id}
-            onClick={() => setSelectedRoom(room)}
+            to={`/rooms/${room.id}`}
             className="card hover:shadow-xl hover:-translate-y-1 transition-all duration-200 text-left w-full"
           >
             <div className="p-6">
@@ -160,7 +152,7 @@ const RoomsList = () => {
                 {isAdmin() ? 'Clic para ver · editar · eliminar' : 'Clic para ver detalles'}
               </p>
             </div>
-          </button>
+          </Link>
         ))}
       </div>
 
