@@ -1,17 +1,16 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { BedDouble, Plus, Filter } from 'lucide-react';
 import { roomService } from '@/services/api';
 import type { Room } from '@/types';
 import { useAuthStore } from '@/store/authStore';
 import CreateRoomModal from '@/components/CreateRoomModal';
-import RoomDetailModal from '@/components/RoomDetailModal';
 
 const RoomsList = () => {
   const { isAdmin } = useAuthStore();
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
   const [filters, setFilters] = useState({ estado: '', piso: '' });
 
   useEffect(() => {
@@ -33,25 +32,41 @@ const RoomsList = () => {
     }
   };
 
-  const statusBadge = (estado: string) => {
+  const statusBadge = (room: Room) => {
+    const isActive = Boolean(room.activa);
+
+    if (!isActive) {
+      return (
+        <span className="px-2 py-1 rounded-lg text-xs font-semibold bg-red-100 text-red-700">
+          No disponible
+        </span>
+      );
+    }
+
     const styles: Record<string, string> = {
       disponible: 'bg-green-100 text-green-700',
       ocupada: 'bg-red-100 text-red-700',
       mantenimiento: 'bg-yellow-100 text-yellow-700',
       limpieza: 'bg-blue-100 text-blue-700',
     };
+
     const labels: Record<string, string> = {
       disponible: 'Disponible',
       ocupada: 'Ocupada',
       mantenimiento: 'Mantenimiento',
       limpieza: 'Limpieza',
     };
-    return (
-      <span className={`px-2 py-1 rounded-lg text-xs font-semibold ${styles[estado] || 'bg-gray-100 text-gray-600'}`}>
-        {labels[estado] || estado}
-      </span>
-    );
-  };
+
+  return (
+    <span
+      className={`px-2 py-1 rounded-lg text-xs font-semibold ${
+        styles[room.estado] || 'bg-gray-100 text-gray-600'
+      }`}
+    >
+      {labels[room.estado] || room.estado}
+    </span>
+  );
+};
 
   if (loading) {
     return (
@@ -86,13 +101,6 @@ const RoomsList = () => {
         onClose={() => setIsCreateOpen(false)}
         onSuccess={loadRooms}
       />
-      <RoomDetailModal
-        room={selectedRoom}
-        isOpen={!!selectedRoom}
-        onClose={() => setSelectedRoom(null)}
-        onUpdated={loadRooms}
-        isAdmin={isAdmin()}
-      />
 
       {/* Filters */}
       <div className="card p-4">
@@ -125,9 +133,9 @@ const RoomsList = () => {
       {/* Rooms Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {rooms.map((room) => (
-          <button
+          <Link
             key={room.id}
-            onClick={() => setSelectedRoom(room)}
+            to={`/rooms/${room.id}`}
             className="card hover:shadow-xl hover:-translate-y-1 transition-all duration-200 text-left w-full"
           >
             <div className="p-6">
@@ -135,7 +143,7 @@ const RoomsList = () => {
                 <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/30">
                   <BedDouble className="w-6 h-6 text-white" />
                 </div>
-                {statusBadge(room.estado)}
+                {statusBadge(room)}
               </div>
 
               <h3 className="text-lg font-bold text-gray-900 mb-1">
@@ -155,12 +163,15 @@ const RoomsList = () => {
                   👤 Capacidad: {room.capacidad_maxima} personas
                 </p>
               )}
-
               <p className="text-xs text-blue-400 mt-3 font-medium">
-                {isAdmin() ? 'Clic para ver · editar · eliminar' : 'Clic para ver detalles'}
+                {!room.activa
+                  ? 'Habitación desactivada'
+                  : isAdmin()
+                  ? 'Clic para ver · editar · eliminar'
+                  : 'Clic para ver detalles'}
               </p>
             </div>
-          </button>
+          </Link>
         ))}
       </div>
 

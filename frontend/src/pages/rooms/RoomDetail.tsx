@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
-  BedDouble,
   ArrowLeft,
   Edit,
   Trash2,
@@ -14,26 +13,113 @@ import { roomService } from '@/services/api';
 import type { Room } from '@/types';
 import { useAuthStore } from '@/store/authStore';
 
+type RoomDetailApiResponse = {
+  status?: string;
+  data?: {
+    id: number;
+    numero: string;
+    tipo?: number;
+    tipo_nombre?: string;
+    tipo_detalle?: {
+      nombre?: string;
+      capacidad_maxima?: number;
+      amenities?: string[] | string;
+    };
+    capacidad_maxima?: number;
+    amenities?: string[] | string;
+    piso: number;
+    estado: Room['estado'];
+    precio_actual: number;
+    descripcion?: string;
+    caracteristicas?: Record<string, unknown>;
+    activa: boolean;
+  };
+};
+
+const parseAmenities = (value: unknown): string[] => {
+  if (Array.isArray(value)) {
+    return value.filter((item): item is string => typeof item === 'string');
+  }
+
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) {
+        return parsed.filter((item): item is string => typeof item === 'string');
+      }
+    } catch {
+      return [];
+    }
+  }
+
+  return [];
+};
+
 const RoomDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { isAdmin } = useAuthStore();
-  
+  const authStore = useAuthStore();
+
+  const isAdmin =
+    typeof authStore.isAdmin === 'function' ? authStore.isAdmin() : false;
+
   const [room, setRoom] = useState<Room | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (id) {
-      loadRoom(parseInt(id));
+    if (!id) {
+      setRoom(null);
+      setLoading(false);
+      return;
     }
+
+    const roomId = Number(id);
+
+    if (Number.isNaN(roomId)) {
+      setRoom(null);
+      setLoading(false);
+      return;
+    }
+
+    loadRoom(roomId);
   }, [id]);
 
   const loadRoom = async (roomId: number) => {
     try {
+      setLoading(true);
+
       const response = await roomService.getById(roomId);
-      setRoom(response.data.data);
+      const rawRoom = (response.data as RoomDetailApiResponse)?.data;
+
+      if (!rawRoom) {
+        console.log('No vino data desde API:', response.data);
+        setRoom(null);
+        return;
+      }
+
+      const sourceAmenities =
+        rawRoom.amenities ?? rawRoom.tipo_detalle?.amenities;
+
+      const normalizedRoom: Room = {
+        id: rawRoom.id,
+        numero: rawRoom.numero,
+        tipo_id: rawRoom.tipo ?? 0,
+        tipo_nombre: rawRoom.tipo_nombre ?? rawRoom.tipo_detalle?.nombre ?? 'Sin tipo',
+        capacidad_maxima:
+          rawRoom.capacidad_maxima ?? rawRoom.tipo_detalle?.capacidad_maxima ?? 0,
+        amenities: parseAmenities(sourceAmenities),
+        piso: rawRoom.piso,
+        estado: rawRoom.estado,
+        precio_actual: rawRoom.precio_actual,
+        descripcion: rawRoom.descripcion,
+        caracteristicas: rawRoom.caracteristicas,
+        activa: rawRoom.activa,
+      };
+
+      setRoom(normalizedRoom);
     } catch (error) {
       console.error('Error loading room:', error);
+      setRoom(null);
     } finally {
       setLoading(false);
     }
@@ -50,35 +136,49 @@ const RoomDetail = () => {
     }
   };
 
-  const getStatusIcon = (estado: string) => {
-    switch (estado) {
-      case 'disponible':
-        return <CheckCircle className="w-5 h-5 text-green-500" />;
-      case 'ocupada':
-        return <XCircle className="w-5 h-5 text-red-500" />;
-      case 'mantenimiento':
-        return <Wrench className="w-5 h-5 text-yellow-500" />;
-      case 'limpieza':
-        return <Sparkles className="w-5 h-5 text-blue-500" />;
-      default:
-        return null;
-    }
-  };
+  const getStatusIcon = (estado: string, activa: boolean) => {
+  if (!activa) {
+    return <XCircle className="w-5 h-5 text-red-500" />;
+  }
 
-  const getStatusBadge = (estado: string) => {
-    const styles: Record<string, string> = {
-      disponible: 'badge-green',
-      ocupada: 'badge-red',
-      mantenimiento: 'badge-yellow',
-      limpieza: 'badge-blue',
+  switch (estado) {
+    case 'disponible':
+      return <CheckCircle className="w-5 h-5 text-green-500" />;
+    case 'ocupada':
+      return <XCircle className="w-5 h-5 text-red-500" />;
+    case 'mantenimiento':
+      return <Wrench className="w-5 h-5 text-yellow-500" />;
+    case 'limpieza':
+      return <Sparkles className="w-5 h-5 text-blue-500" />;
+    default:
+      return null;
+    }
+  };;
+
+  const getStatusBadge = (estado: string, activa: boolean) => {
+  if (!activa) {
+    return <span className="badge-red">No disponible</span>;
+  }
+
+  const styles: Record<string, string> = {
+    disponible: 'badge-green',
+    ocupada: 'badge-red',
+    mantenimiento: 'badge-yellow',
+    limpieza: 'badge-blue',
     };
-    const labels: Record<string, string> = {
-      disponible: 'Disponible',
-      ocupada: 'Ocupada',
-      mantenimiento: 'Mantenimiento',
-      limpieza: 'Limpieza',
+
+  const labels: Record<string, string> = {
+    disponible: 'Disponible',
+    ocupada: 'Ocupada',
+    mantenimiento: 'Mantenimiento',
+    limpieza: 'Limpieza',
     };
-    return <span className={styles[estado] || 'badge-gray'}>{labels[estado]}</span>;
+
+  return (
+    <span className={styles[estado] || 'badge-gray'}>
+      {labels[estado] || estado}
+    </span>
+    );
   };
 
   if (loading) {
@@ -104,7 +204,6 @@ const RoomDetail = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link
@@ -120,8 +219,8 @@ const RoomDetail = () => {
             <p className="text-gray-500">{room.tipo_nombre}</p>
           </div>
         </div>
-        
-        {isAdmin() && (
+
+        {isAdmin && (
           <div className="flex items-center gap-2">
             <button
               onClick={handleDelete}
@@ -134,9 +233,7 @@ const RoomDetail = () => {
         )}
       </div>
 
-      {/* Room Info */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main Info */}
         <div className="lg:col-span-2 space-y-6">
           <div className="card">
             <div className="card-header">
@@ -172,10 +269,10 @@ const RoomDetail = () => {
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Estado</p>
-                  <div className="mt-1">{getStatusBadge(room.estado)}</div>
+                  <div className="mt-1">{getStatusBadge(room.estado, Boolean(room.activa))}</div>
                 </div>
               </div>
-              
+
               {room.descripcion && (
                 <div>
                   <p className="text-sm text-gray-500">Descripción</p>
@@ -185,12 +282,11 @@ const RoomDetail = () => {
             </div>
           </div>
 
-          {/* Amenities */}
-          {room.amenities && room.amenities.length > 0 && (
+          {Array.isArray(room.amenities) && room.amenities.length > 0 && (
             <div className="card">
               <div className="card-header">
                 <h3 className="text-lg font-semibold text-gray-900">
-                  Amenities
+                  Comodidades
                 </h3>
               </div>
               <div className="card-body">
@@ -209,9 +305,7 @@ const RoomDetail = () => {
           )}
         </div>
 
-        {/* Sidebar */}
         <div className="space-y-6">
-          {/* Status Card */}
           <div className="card">
             <div className="card-header">
               <h3 className="text-lg font-semibold text-gray-900">
@@ -220,13 +314,19 @@ const RoomDetail = () => {
             </div>
             <div className="card-body">
               <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg">
-                {getStatusIcon(room.estado)}
+                {getStatusIcon(room.estado, Boolean(room.activa))}
                 <div>
                   <p className="font-medium text-gray-900">
-                    {room.estado.charAt(0).toUpperCase() + room.estado.slice(1)}
+                    {!room.activa
+                      ? 'No disponible'
+                      : typeof room.estado === 'string' && room.estado.length > 0
+                      ? room.estado.charAt(0).toUpperCase() + room.estado.slice(1)
+                      : 'Sin estado'}
                   </p>
                   <p className="text-sm text-gray-500">
-                    {room.estado === 'disponible'
+                    {!room.activa
+                      ? 'Habitación desactivada'
+                      : room.estado === 'disponible'
                       ? 'Lista para reservar'
                       : room.estado === 'ocupada'
                       ? 'Actualmente ocupada'
@@ -239,8 +339,7 @@ const RoomDetail = () => {
             </div>
           </div>
 
-          {/* Quick Actions */}
-          {isAdmin() && (
+          {isAdmin && (
             <div className="card">
               <div className="card-header">
                 <h3 className="text-lg font-semibold text-gray-900">

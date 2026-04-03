@@ -2,15 +2,9 @@
 
 set -e
 
-
-# Aplicar migraciones
-echo "Generando migraciones locales..."
-python manage.py makemigrations core users rooms reservations
-
 echo "Aplicando migraciones..."
 python manage.py migrate --noinput
 
-# Crear superusuario si no existe
 python manage.py shell << EOF
 import os
 from django.contrib.auth import get_user_model
@@ -28,11 +22,9 @@ if not User.objects.filter(username='admin').exists():
     print('Superusuario creado: admin / admin123')
 EOF
 
-# Recolectar archivos estáticos
 echo "Recolectando archivos estáticos..."
 python manage.py collectstatic --noinput
 
-# Iniciar servidor Gunicorn
 echo "Iniciando servidor..."
 exec gunicorn --bind 0.0.0.0:8000 \
     --workers 4 \
