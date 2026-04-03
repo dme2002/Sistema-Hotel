@@ -32,25 +32,41 @@ const RoomsList = () => {
     }
   };
 
-  const statusBadge = (estado: string) => {
+  const statusBadge = (room: Room) => {
+    const isActive = Boolean(room.activa);
+
+    if (!isActive) {
+      return (
+        <span className="px-2 py-1 rounded-lg text-xs font-semibold bg-red-100 text-red-700">
+          No disponible
+        </span>
+      );
+    }
+
     const styles: Record<string, string> = {
       disponible: 'bg-green-100 text-green-700',
       ocupada: 'bg-red-100 text-red-700',
       mantenimiento: 'bg-yellow-100 text-yellow-700',
       limpieza: 'bg-blue-100 text-blue-700',
     };
+
     const labels: Record<string, string> = {
       disponible: 'Disponible',
       ocupada: 'Ocupada',
       mantenimiento: 'Mantenimiento',
       limpieza: 'Limpieza',
     };
-    return (
-      <span className={`px-2 py-1 rounded-lg text-xs font-semibold ${styles[estado] || 'bg-gray-100 text-gray-600'}`}>
-        {labels[estado] || estado}
-      </span>
-    );
-  };
+
+  return (
+    <span
+      className={`px-2 py-1 rounded-lg text-xs font-semibold ${
+        styles[room.estado] || 'bg-gray-100 text-gray-600'
+      }`}
+    >
+      {labels[room.estado] || room.estado}
+    </span>
+  );
+};
 
   if (loading) {
     return (
@@ -127,7 +143,7 @@ const RoomsList = () => {
                 <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/30">
                   <BedDouble className="w-6 h-6 text-white" />
                 </div>
-                {statusBadge(room.estado)}
+                {statusBadge(room)}
               </div>
 
               <h3 className="text-lg font-bold text-gray-900 mb-1">
@@ -147,9 +163,12 @@ const RoomsList = () => {
                   👤 Capacidad: {room.capacidad_maxima} personas
                 </p>
               )}
-
               <p className="text-xs text-blue-400 mt-3 font-medium">
-                {isAdmin() ? 'Clic para ver · editar · eliminar' : 'Clic para ver detalles'}
+                {!room.activa
+                  ? 'Habitación desactivada'
+                  : isAdmin()
+                  ? 'Clic para ver · editar · eliminar'
+                  : 'Clic para ver detalles'}
               </p>
             </div>
           </Link>
