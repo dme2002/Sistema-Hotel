@@ -1,21 +1,17 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { BedDouble, Plus, Search, Filter } from 'lucide-react';
+import { BedDouble, Plus, Filter } from 'lucide-react';
 import { roomService } from '@/services/api';
 import type { Room } from '@/types';
 import { useAuthStore } from '@/store/authStore';
-
 import CreateRoomModal from '@/components/CreateRoomModal';
 
 const RoomsList = () => {
   const { isAdmin } = useAuthStore();
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [filters, setFilters] = useState({
-    estado: '',
-    piso: '',
-  });
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [filters, setFilters] = useState({ estado: '', piso: '' });
 
   useEffect(() => {
     loadRooms();
@@ -23,12 +19,12 @@ const RoomsList = () => {
 
   const loadRooms = async () => {
     try {
+      setLoading(true);
       const params: any = {};
       if (filters.estado) params.estado = filters.estado;
       if (filters.piso) params.piso = filters.piso;
-
       const response = await roomService.getAll(params);
-      setRooms(response.data.data);
+      setRooms(response.data.data || []);
     } catch (error) {
       console.error('Error loading rooms:', error);
     } finally {
@@ -36,12 +32,12 @@ const RoomsList = () => {
     }
   };
 
-  const getStatusBadge = (estado: string) => {
+  const statusBadge = (estado: string) => {
     const styles: Record<string, string> = {
-      disponible: 'badge-green',
-      ocupada: 'badge-red',
-      mantenimiento: 'badge-yellow',
-      limpieza: 'badge-blue',
+      disponible: 'bg-green-100 text-green-700',
+      ocupada: 'bg-red-100 text-red-700',
+      mantenimiento: 'bg-yellow-100 text-yellow-700',
+      limpieza: 'bg-blue-100 text-blue-700',
     };
     const labels: Record<string, string> = {
       disponible: 'Disponible',
@@ -49,7 +45,11 @@ const RoomsList = () => {
       mantenimiento: 'Mantenimiento',
       limpieza: 'Limpieza',
     };
-    return <span className={styles[estado] || 'badge-gray'}>{labels[estado]}</span>;
+    return (
+      <span className={`px-2 py-1 rounded-lg text-xs font-semibold ${styles[estado] || 'bg-gray-100 text-gray-600'}`}>
+        {labels[estado] || estado}
+      </span>
+    );
   };
 
   if (loading) {
@@ -69,8 +69,8 @@ const RoomsList = () => {
           <p className="text-gray-500">Gestión de habitaciones del hotel</p>
         </div>
         {isAdmin() && (
-          <button 
-            onClick={() => setIsModalOpen(true)}
+          <button
+            onClick={() => setIsCreateOpen(true)}
             className="btn-primary flex items-center gap-2"
           >
             <Plus className="w-5 h-5" />
@@ -79,9 +79,10 @@ const RoomsList = () => {
         )}
       </div>
 
-      <CreateRoomModal 
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+      {/* Modals */}
+      <CreateRoomModal
+        isOpen={isCreateOpen}
+        onClose={() => setIsCreateOpen(false)}
         onSuccess={loadRooms}
       />
 
@@ -107,9 +108,7 @@ const RoomsList = () => {
           >
             <option value="">Todos los pisos</option>
             {[1, 2, 3, 4].map((piso) => (
-              <option key={piso} value={piso}>
-                Piso {piso}
-              </option>
+              <option key={piso} value={piso}>Piso {piso}</option>
             ))}
           </select>
         </div>
@@ -121,33 +120,37 @@ const RoomsList = () => {
           <Link
             key={room.id}
             to={`/rooms/${room.id}`}
-            className="card hover:shadow-lg transition-shadow"
+            className="card hover:shadow-xl hover:-translate-y-1 transition-all duration-200 text-left w-full"
           >
             <div className="p-6">
               <div className="flex items-start justify-between mb-4">
-                <div className="w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center">
-                  <BedDouble className="w-6 h-6 text-primary-600" />
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/30">
+                  <BedDouble className="w-6 h-6 text-white" />
                 </div>
-                {getStatusBadge(room.estado)}
+                {statusBadge(room.estado)}
               </div>
-              
-              <h3 className="text-lg font-semibold text-gray-900 mb-1">
+
+              <h3 className="text-lg font-bold text-gray-900 mb-1">
                 Habitación {room.numero}
               </h3>
-              <p className="text-gray-500 text-sm mb-2">{room.tipo_nombre}</p>
-              
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-500">Piso {room.piso}</span>
-                <span className="font-semibold text-primary-600">
-                  ${room.precio_actual}/noche
+              <p className="text-gray-500 text-sm mb-3">{room.tipo_nombre}</p>
+
+              <div className="flex items-center justify-between text-sm border-t pt-3">
+                <span className="text-gray-400">Piso {room.piso}</span>
+                <span className="font-bold text-blue-600">
+                  ${room.precio_actual}<span className="text-xs font-normal text-gray-400">/noche</span>
                 </span>
               </div>
-              
+
               {room.capacidad_maxima && (
-                <p className="text-xs text-gray-400 mt-2">
-                  Capacidad: {room.capacidad_maxima} personas
+                <p className="text-xs text-gray-400 mt-2 flex items-center gap-1">
+                  👤 Capacidad: {room.capacidad_maxima} personas
                 </p>
               )}
+
+              <p className="text-xs text-blue-400 mt-3 font-medium">
+                {isAdmin() ? 'Clic para ver · editar · eliminar' : 'Clic para ver detalles'}
+              </p>
             </div>
           </Link>
         ))}
@@ -156,12 +159,8 @@ const RoomsList = () => {
       {rooms.length === 0 && (
         <div className="text-center py-12">
           <BedDouble className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-1">
-            No hay habitaciones
-          </h3>
-          <p className="text-gray-500">
-            No se encontraron habitaciones con los filtros seleccionados
-          </p>
+          <h3 className="text-lg font-medium text-gray-900 mb-1">No hay habitaciones</h3>
+          <p className="text-gray-500">No se encontraron habitaciones con los filtros seleccionados</p>
         </div>
       )}
     </div>

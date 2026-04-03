@@ -1,11 +1,12 @@
 """
 Router de reservas.
 """
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, BackgroundTasks
 from typing import List, Optional
 from datetime import date
 import logging
 import uuid
+import asyncio
 
 from models.reservation import (
     Reserva, ReservaCreate, ReservaUpdate, ReservaEstado,
@@ -387,18 +388,33 @@ async def cambiar_estado(
     )
     
     # Actualizar estado de habitación si es necesario
-    habitacion_estado = None
+    habitacion_id = reserva["habitacion_id"]
     if nuevo_estado == 'check_in':
-        habitacion_estado = 'ocupada'
-    elif nuevo_estado == 'check_out':
-        habitacion_estado = 'limpieza'
-    elif nuevo_estado == 'cancelada':
-        habitacion_estado = 'disponible'
-    
-    if habitacion_estado:
         await execute_update(
-            "UPDATE habitaciones SET estado = %s WHERE id = %s",
-            (habitacion_estado, reserva["habitacion_id"])
+            "UPDATE habitaciones SET estado = 'ocupada' WHERE id = %s",
+            (habitacion_id,)
+        )
+    elif nuevo_estado == 'check_out':
+        # Poner en limpieza primero, luego disponible automáticamente en 30 segundos
+        await execute_update(
+            "UPDATE habitaciones SET estado = 'limpieza' WHERE id = %s",
+            (habitacion_id,)
+        )
+        async def liberar_habitacion(hab_id: int):
+            await asyncio.sleep(30)
+            try:
+                await execute_update(
+                    "UPDATE habitaciones SET estado = 'disponible' WHERE id = %s",
+                    (hab_id,)
+                )
+                logger.info(f"Habitación {hab_id} marcada como disponible tras checkout")
+            except Exception as e:
+                logger.error(f"Error al liberar habitación {hab_id}: {e}")
+        asyncio.create_task(liberar_habitacion(habitacion_id))
+    elif nuevo_estado == 'cancelada':
+        await execute_update(
+            "UPDATE habitaciones SET estado = 'disponible' WHERE id = %s",
+            (habitacion_id,)
         )
     
     # Registrar en historial
