@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { UserCircle, Mail, Phone, Calendar } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
-import { authService } from '@/services/api';
+import { userService } from '@/services/api';
 
 const Profile = () => {
   const { user, setUser } = useAuthStore();
@@ -15,21 +15,18 @@ const Profile = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user) return;
+    
     setLoading(true);
     setMessage('');
 
     try {
-      const response = await authService.changePassword({
-        password_actual: '',
-        nuevo_password: '',
-        confirmar_password: '',
-      });
+      await userService.update(user.id, formData);
+      setUser({ ...user, ...formData });
       setMessage('Perfil actualizado exitosamente');
-      if (user) {
-        setUser({ ...user, ...formData });
-      }
-    } catch (error) {
-      setMessage('Error al actualizar el perfil');
+    } catch (error: any) {
+      console.error('Error updating profile:', error);
+      setMessage(error.response?.data?.message || 'Error al actualizar el perfil');
     } finally {
       setLoading(false);
     }
@@ -62,7 +59,8 @@ const Profile = () => {
                 {user.apellidos[0]}
               </span>
             </div>
-            <h3 className="text-xl font-semibold text-gray-900">
+            <h3 className="text-xl font-semibold text-gray-900 mt-2">
+              <UserCircle className="w-8 h-8 inline-block mr-2 text-primary-600" />
               {user.nombres} {user.apellidos}
             </h3>
             <p className="text-gray-500 capitalize">{user.rol?.nombre}</p>
@@ -92,73 +90,75 @@ const Profile = () => {
         </div>
 
         {/* Edit Form */}
-        <div className="lg:col-span-2 card">
-          <div className="card-header">
-            <h3 className="text-lg font-semibold text-gray-900">
-              Editar Perfil
-            </h3>
-          </div>
-          <div className="card-body">
-            {message && (
-              <div
-                className={`mb-4 p-3 rounded-lg ${
-                  message.includes('exitosamente')
-                    ? 'bg-green-50 text-green-600'
-                    : 'bg-red-50 text-red-600'
-                }`}
-              >
-                {message}
-              </div>
-            )}
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="form-label">Nombres</label>
-                  <input
-                    type="text"
-                    value={formData.nombres}
-                    onChange={(e) =>
-                      setFormData({ ...formData, nombres: e.target.value })
-                    }
-                    className="form-input"
-                  />
-                </div>
-                <div>
-                  <label className="form-label">Apellidos</label>
-                  <input
-                    type="text"
-                    value={formData.apellidos}
-                    onChange={(e) =>
-                      setFormData({ ...formData, apellidos: e.target.value })
-                    }
-                    className="form-input"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="form-label">Teléfono</label>
-                <input
-                  type="tel"
-                  value={formData.telefono}
-                  onChange={(e) =>
-                    setFormData({ ...formData, telefono: e.target.value })
-                  }
-                  className="form-input"
-                />
-              </div>
-
-              <div className="pt-4">
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="btn-primary"
+        <div className="lg:col-span-2">
+          <div className="card">
+            <div className="card-header">
+              <h3 className="text-lg font-semibold text-gray-900">
+                Editar Perfil
+              </h3>
+            </div>
+            <div className="card-body">
+              {message && (
+                <div
+                  className={`mb-4 p-3 rounded-lg ${
+                    message.includes('exitosamente')
+                      ? 'bg-green-50 text-green-600'
+                      : 'bg-red-50 text-red-600'
+                  }`}
                 >
-                  {loading ? 'Guardando...' : 'Guardar Cambios'}
-                </button>
-              </div>
-            </form>
+                  {message}
+                </div>
+              )}
+
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="form-label">Nombres</label>
+                    <input
+                      type="text"
+                      value={formData.nombres}
+                      onChange={(e) =>
+                        setFormData({ ...formData, nombres: e.target.value })
+                      }
+                      className="form-input"
+                    />
+                  </div>
+                  <div>
+                    <label className="form-label">Apellidos</label>
+                    <input
+                      type="text"
+                      value={formData.apellidos}
+                      onChange={(e) =>
+                        setFormData({ ...formData, apellidos: e.target.value })
+                      }
+                      className="form-input"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="form-label">Teléfono</label>
+                  <input
+                    type="tel"
+                    value={formData.telefono}
+                    onChange={(e) =>
+                      setFormData({ ...formData, telefono: e.target.value })
+                    }
+                    className="form-input"
+                  />
+                </div>
+
+                <div className="pt-4">
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="btn-primary"
+                  >
+                    {loading ? 'Guardando...' : 'Guardar Cambios'}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       </div>

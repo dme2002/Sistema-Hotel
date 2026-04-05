@@ -202,11 +202,18 @@ async def create_user(
 async def update_user(
     user_id: int,
     user_data: UserUpdate,
-    current_user = Depends(require_admin)
+    current_user = Depends(get_current_user)
 ):
     """
     Actualiza un usuario existente.
     """
+    # Solo administradores pueden actualizar a otros. Usuarios normales solo pueden actualizarse a sí mismos.
+    if current_user.rol.nombre != 'admin' and user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tiene permisos para actualizar este usuario"
+        )
+
     # Verificar que el usuario existe
     user = await execute_one("SELECT id, username FROM usuarios WHERE id = %s", (user_id,))
     if not user:
@@ -215,7 +222,14 @@ async def update_user(
             detail="Usuario no encontrado"
         )
     
-    # No permitir desactivarse a sí mismo
+    # Restricciones para no-admins
+    if current_user.rol.nombre != 'admin':
+        # No pueden cambiar su rol
+        user_data.rol_id = None
+        # No pueden cambiar su estado de activo
+        user_data.is_active = None
+    
+    # No permitir desactivarse a sí mismo (incluso para admins)
     if user_id == current_user.id and user_data.is_active is False:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -248,7 +262,7 @@ async def update_user(
             detail="No hay campos para actualizar"
         )
     
-    query = f"UPDATE usuarios SET {', '.join(update_fields)} WHERE id = %s"
+    query = f"UPDATE usuarios SET {', '.join(update_fields)}, updated_at = NOW() WHERE id = %s"
     params.append(user_id)
     
     await execute_update(query, tuple(params))

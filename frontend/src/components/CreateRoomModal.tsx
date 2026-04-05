@@ -12,7 +12,7 @@ const CreateRoomModal = ({ isOpen, onClose, onSuccess }: CreateRoomModalProps) =
   const [loading, setLoading] = useState(false);
   const [types, setTypes] = useState<any[]>([]);
   const [error, setError] = useState('');
-  
+
   const [formData, setFormData] = useState({
     numero: '',
     tipo_id: '',
@@ -41,7 +41,7 @@ const CreateRoomModal = ({ isOpen, onClose, onSuccess }: CreateRoomModalProps) =
       if (response.data.data.length > 0 && !formData.tipo_id) {
         const firstType = response.data.data[0];
         setFormData(prev => ({
-          ...prev, 
+          ...prev,
           tipo_id: firstType.id.toString(),
           precio_actual: firstType.precio_base.toString()
         }));
@@ -108,7 +108,7 @@ const CreateRoomModal = ({ isOpen, onClose, onSuccess }: CreateRoomModalProps) =
               <p className="text-primary-100 text-sm">Registre una nueva habitación en el sistema</p>
             </div>
           </div>
-          <button 
+          <button
             onClick={onClose}
             className="p-2 hover:bg-white/10 rounded-full transition-colors"
           >
@@ -212,7 +212,7 @@ const CreateRoomModal = ({ isOpen, onClose, onSuccess }: CreateRoomModalProps) =
             <p className="text-sm font-bold text-gray-700 mb-2">Comodidades</p>
             <div className="grid grid-cols-2 gap-3">
               <label className="flex items-center gap-2 cursor-pointer group">
-                <input 
+                <input
                   type="checkbox"
                   checked={formData.caracteristicas.wifi}
                   onChange={(e) => setFormData({
@@ -224,7 +224,7 @@ const CreateRoomModal = ({ isOpen, onClose, onSuccess }: CreateRoomModalProps) =
                 <span className="text-sm text-gray-600 group-hover:text-primary-600 transition-colors">WiFi Gratuito</span>
               </label>
               <label className="flex items-center gap-2 cursor-pointer group">
-                <input 
+                <input
                   type="checkbox"
                   checked={formData.caracteristicas.tv}
                   onChange={(e) => setFormData({
@@ -236,7 +236,7 @@ const CreateRoomModal = ({ isOpen, onClose, onSuccess }: CreateRoomModalProps) =
                 <span className="text-sm text-gray-600 group-hover:text-primary-600 transition-colors">Smart TV</span>
               </label>
               <label className="flex items-center gap-2 cursor-pointer group">
-                <input 
+                <input
                   type="checkbox"
                   checked={formData.caracteristicas.ac}
                   onChange={(e) => setFormData({
