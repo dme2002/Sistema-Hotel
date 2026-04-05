@@ -81,11 +81,13 @@ function App() {
           <Route path="/rooms/:id" element={<RoomDetail />} />
           <Route path="/rooms/:id/edit" element={<RoomEdit />} />
 
-          {/* Reservations - Admin and Recepcionista */}
+          {/* Reservation Details - Specific path first */}
+          <Route path="/reservations/:id" element={<ReservationDetail />} />
+
+          {/* Reservations - List and Create are for Admin and Recepcionista */}
           <Route element={<ProtectedRoute requiredRole="recepcionista" />}>
             <Route path="/reservations" element={<ReservationsList />} />
             <Route path="/reservations/create" element={<ReservationCreate />} />
-            <Route path="/reservations/:id" element={<ReservationDetail />} />
           </Route>
 
           {/* Customer only */}

@@ -95,7 +95,7 @@ const MyReservations = () => {
               
               <div className="mt-4 pt-4 border-t border-gray-200">
                 <Link
-                  to={`/reservations/${reservation.id}`}
+                  to={reservation.id ? `/reservations/${reservation.id}` : "#"}
                   className="flex items-center justify-center gap-2 text-primary-600 hover:text-primary-700 font-medium"
                 >
                   <Eye className="w-4 h-4" />

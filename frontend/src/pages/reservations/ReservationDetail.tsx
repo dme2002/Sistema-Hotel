@@ -16,7 +16,7 @@ const ReservationDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { isAdmin, isRecepcionista } = useAuthStore();
-  
+
   const [reservation, setReservation] = useState<Reservation | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -39,7 +39,7 @@ const ReservationDetail = () => {
 
   const handleChangeStatus = async (newStatus: string) => {
     if (!reservation) return;
-    
+
     try {
       await reservationService.changeStatus(reservation.id, newStatus);
       loadReservation(reservation.id);
@@ -50,7 +50,7 @@ const ReservationDetail = () => {
 
   const handleCancel = async () => {
     if (!reservation || !confirm('¿Está seguro de cancelar esta reserva?')) return;
-    
+
     try {
       await reservationService.cancel(reservation.id);
       loadReservation(reservation.id);
@@ -91,8 +91,11 @@ const ReservationDetail = () => {
         <h2 className="text-xl font-semibold text-gray-900">
           Reserva no encontrada
         </h2>
-        <Link to="/reservations" className="text-primary-600 hover:underline mt-2">
-          Volver a reservas
+        <Link
+          to={isAdmin() || isRecepcionista() ? "/reservations" : "/my-reservations"}
+          className="text-primary-600 hover:underline mt-2"
+        >
+          Volver a mis reservas
         </Link>
       </div>
     );
@@ -106,7 +109,7 @@ const ReservationDetail = () => {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link
-            to="/reservations"
+            to={isAdmin() || isRecepcionista() ? "/reservations" : "/my-reservations"}
             className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -118,7 +121,7 @@ const ReservationDetail = () => {
             <p className="text-gray-500">Detalles de la reserva</p>
           </div>
         </div>
-        
+
         <div className="flex items-center gap-2">
           {getStatusBadge(reservation.estado)}
         </div>
@@ -223,14 +226,14 @@ const ReservationDetail = () => {
                 </p>
               </div>
             </div>
-            
+
             <div className="pt-4 border-t border-gray-200">
               <p className="text-sm text-gray-500">Precio Total</p>
               <p className="text-2xl font-bold text-primary-600">
                 ${reservation.precio_total}
               </p>
             </div>
-            
+
             {reservation.notas && (
               <div>
                 <p className="text-sm text-gray-500">Notas</p>
