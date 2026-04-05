@@ -54,37 +54,39 @@ const Login = () => {
   };
 
   return (
-    <div className="p-8">
-      <div className="text-center mb-8">
-        <h2 className="text-2xl font-bold text-gray-900">Bienvenido</h2>
-        <p className="text-gray-500 mt-1">
-          Inicie sesión para acceder al sistema
-        </p>
-      </div>
+    <div className="space-y-6">
 
+      {/* Error */}
       {error && (
-        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
+        <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">
           {error}
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-5">
+
+        {/* Usuario */}
         <div>
-          <label className="form-label">Usuario</label>
+          <label className="text-sm font-medium text-slate-700 mb-1 block">
+            Usuario
+          </label>
           <input
             type="text"
             value={formData.username}
             onChange={(e) =>
               setFormData({ ...formData, username: e.target.value })
             }
-            className="form-input"
+            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
             placeholder="Ingrese su usuario"
             required
           />
         </div>
 
+        {/* Contraseña */}
         <div>
-          <label className="form-label">Contraseña</label>
+          <label className="text-sm font-medium text-slate-700 mb-1 block">
+            Contraseña
+          </label>
           <div className="relative">
             <input
               type={showPassword ? 'text' : 'password'}
@@ -92,14 +94,15 @@ const Login = () => {
               onChange={(e) =>
                 setFormData({ ...formData, password: e.target.value })
               }
-              className="form-input pr-10"
+              className="w-full px-4 py-2.5 pr-10 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
               placeholder="Ingrese su contraseña"
               required
             />
+
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
             >
               {showPassword ? (
                 <EyeOff className="w-5 h-5" />
@@ -110,10 +113,11 @@ const Login = () => {
           </div>
         </div>
 
+        {/* Botón */}
         <button
           type="submit"
           disabled={loading}
-          className="w-full btn-primary flex items-center justify-center gap-2"
+          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-medium hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg shadow-blue-500/20"
         >
           {loading ? (
             <>
@@ -126,24 +130,22 @@ const Login = () => {
         </button>
       </form>
 
-      <div className="mt-6 text-center">
-        <p className="text-gray-500">
-          ¿No tiene cuenta?{' '}
-          <Link
-            to="/register"
-            className="text-primary-600 hover:text-primary-700 font-medium"
-          >
-            Regístrese aquí
-          </Link>
-        </p>
+      {/* Registro */}
+      <div className="text-center text-sm text-slate-500">
+        ¿No tiene cuenta?{' '}
+        <Link
+          to="/register"
+          className="text-blue-600 hover:text-blue-700 font-medium"
+        >
+          Regístrese aquí
+        </Link>
       </div>
 
-      <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-        <p className="text-xs text-gray-500 text-center">
-          <strong>Credenciales de demo:</strong>
-          <br />
-          Admin: admin / admin123
-        </p>
+      {/* Demo */}
+      <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-center text-xs text-slate-500">
+        <strong>Credenciales de demo:</strong>
+        <br />
+        admin / admin123
       </div>
     </div>
   );

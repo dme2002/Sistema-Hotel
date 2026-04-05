@@ -20,6 +20,7 @@ import Dashboard from '@/pages/dashboard/Dashboard';
 // Pages - Rooms
 import RoomsList from '@/pages/rooms/RoomsList';
 import RoomDetail from '@/pages/rooms/RoomDetail';
+import RoomEdit from '@/pages/rooms/RoomEdit';
 
 // Pages - Reservations
 import ReservationsList from '@/pages/reservations/ReservationsList';
@@ -36,6 +37,7 @@ import Profile from '@/pages/profile/Profile';
 // Components
 import ProtectedRoute from '@/components/ProtectedRoute';
 import LoadingScreen from '@/components/LoadingScreen';
+import { Import } from 'lucide-react';
 
 function App() {
   const { isAuthenticated, setUser, logout } = useAuthStore();
@@ -79,6 +81,7 @@ function App() {
           {/* Rooms */}
           <Route path="/rooms" element={<RoomsList />} />
           <Route path="/rooms/:id" element={<RoomDetail />} />
+          <Route path="/rooms/:id/edit" element={<RoomEdit />} />
           
           {/* Reservations - Admin and Recepcionista */}
           <Route element={<ProtectedRoute requiredRole="recepcionista" />}>

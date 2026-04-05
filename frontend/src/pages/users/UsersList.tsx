@@ -8,23 +8,42 @@ const UsersList = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
+
   const [filters, setFilters] = useState({
     rol: '',
     activo: '',
-    search: '',
   });
 
-  useEffect(() => {
-    loadUsers();
-  }, [filters]);
+  const [searchInput, setSearchInput] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
 
-  const loadUsers = async () => {
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      setSearchTerm(searchInput);
+    }, 300);
+
+    return () => clearTimeout(timeout);
+  }, [searchInput]);
+
+  useEffect(() => {
+    loadUsers(true);
+  }, []);
+
+  useEffect(() => {
+    loadUsers(false);
+  }, [filters.rol, filters.activo, searchTerm]);
+
+  const loadUsers = async (showLoader = false) => {
     try {
-      setLoading(true);
+      if (showLoader) {
+        setLoading(true);
+      }
+
       const params: any = {};
+
       if (filters.rol) params.rol = filters.rol;
       if (filters.activo) params.activo = filters.activo === 'true';
-      if (filters.search) params.search = filters.search;
+      if (searchTerm.trim()) params.search = searchTerm.trim();
 
       const response = await userService.getAll(params);
       setUsers(response.data.data || []);
@@ -32,7 +51,9 @@ const UsersList = () => {
       console.error('Error loading users:', error);
       setUsers([]);
     } finally {
-      setLoading(false);
+      if (showLoader) {
+        setLoading(false);
+      }
     }
   };
 
@@ -56,7 +77,7 @@ const UsersList = () => {
   const toggleUserStatus = async (user: User) => {
     try {
       await userService.toggleStatus(user.id);
-      loadUsers();
+      loadUsers(false);
     } catch (error) {
       console.error('Error al cambiar estado del usuario:', error);
     }
@@ -72,7 +93,6 @@ const UsersList = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Usuarios</h1>
@@ -87,7 +107,6 @@ const UsersList = () => {
         </button>
       </div>
 
-      {/* Filters */}
       <div className="card p-4">
         <div className="flex items-center gap-4 flex-wrap">
           <div className="relative flex-1 min-w-[200px]">
@@ -95,14 +114,17 @@ const UsersList = () => {
             <input
               type="text"
               placeholder="Buscar usuario..."
-              value={filters.search}
-              onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
               className="form-input pl-10"
             />
           </div>
+
           <select
             value={filters.rol}
-            onChange={(e) => setFilters({ ...filters, rol: e.target.value })}
+            onChange={(e) =>
+              setFilters((prev) => ({ ...prev, rol: e.target.value }))
+            }
             className="form-input w-40"
           >
             <option value="">Todos los roles</option>
@@ -110,9 +132,12 @@ const UsersList = () => {
             <option value="recepcionista">Recepcionista</option>
             <option value="cliente">Cliente</option>
           </select>
+
           <select
             value={filters.activo}
-            onChange={(e) => setFilters({ ...filters, activo: e.target.value })}
+            onChange={(e) =>
+              setFilters((prev) => ({ ...prev, activo: e.target.value }))
+            }
             className="form-input w-40"
           >
             <option value="">Todos los estados</option>
@@ -122,7 +147,6 @@ const UsersList = () => {
         </div>
       </div>
 
-      {/* Users Table */}
       <div className="card">
         <div className="table-container">
           <table className="data-table">
@@ -148,8 +172,8 @@ const UsersList = () => {
                     <button
                       onClick={() => toggleUserStatus(user)}
                       className={`px-3 py-1 text-xs font-semibold rounded-lg transition-colors ${
-                        user.is_active 
-                          ? 'text-red-600 bg-red-50 hover:bg-red-100' 
+                        user.is_active
+                          ? 'text-red-600 bg-red-50 hover:bg-red-100'
                           : 'text-green-600 bg-green-50 hover:bg-green-100'
                       }`}
                     >
@@ -175,12 +199,11 @@ const UsersList = () => {
         </div>
       )}
 
-      {/* Create User Modal */}
       <CreateUserModal
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
         onSuccess={() => {
-          loadUsers();
+          loadUsers(false);
         }}
       />
     </div>

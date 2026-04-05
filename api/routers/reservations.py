@@ -7,6 +7,7 @@ from datetime import date
 import logging
 import uuid
 import asyncio
+import json
 
 from models.reservation import (
     Reserva, ReservaCreate, ReservaUpdate, ReservaEstado,
@@ -164,8 +165,7 @@ async def get_reserva(
             "estado": reserva["estado"],
             "notas": reserva["notas"],
             "creado_por": f"{reserva['creador_nombres']} {reserva['creador_apellidos']}" if reserva["creador_nombres"] else None,
-            "created_at": reserva["created_at"],
-            "updated_at": reserva["updated_at"]
+            "created_at": reserva["created_at"]
         }
     }
 
@@ -239,9 +239,10 @@ async def create_reserva(
     # Insertar reserva
     from database import execute_insert
     query = """
-        INSERT INTO reservas (codigo_reserva, usuario_id, habitacion_id, fecha_entrada, fecha_salida, 
-                             num_huespedes, precio_total, estado, notas, created_by, created_at, updated_at)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, 'pendiente', %s, %s, NOW(), NOW())
+    INSERT INTO reservas (codigo_reserva, usuario_id, habitacion_id, fecha_entrada, fecha_salida,
+        num_huespedes, precio_total, estado, notas, created_by, created_at
+    )
+    VALUES (%s, %s, %s, %s, %s, %s, %s, 'pendiente', %s, %s, NOW())
     """
     reserva_id = await execute_insert(query, (
         codigo,
@@ -257,8 +258,8 @@ async def create_reserva(
     
     # Registrar en historial
     await execute_update("""
-        INSERT INTO historial_reservas (reserva_id, accion, detalles, usuario_id, created_at, updated_at)
-        VALUES (%s, 'creacion', %s, %s, NOW(), NOW())
+    INSERT INTO historial_reservas (reserva_id, accion, detalles, usuario_id, created_at)
+    VALUES (%s, 'creacion', %s, %s, NOW())
     """, (reserva_id, '{"mensaje": "Reserva creada"}', current_user.id))
     
     logger.info(f"Reserva creada: {codigo} por {current_user.username}")
@@ -330,10 +331,13 @@ async def update_reserva(
     await execute_update(query, tuple(params))
     
     # Registrar en historial
+    detalles = {
+    "campos_actualizados": list(reserva_data.dict(exclude_unset=True).keys())
+}
     await execute_update("""
-        INSERT INTO historial_reservas (reserva_id, accion, detalles, usuario_id, created_at, updated_at)
-        VALUES (%s, 'modificacion', %s, %s, NOW(), NOW())
-    """, (reserva_id, f'{{"campos_actualizados": {list(reserva_data.dict(exclude_unset=True).keys())}}}', current_user.id))
+    INSERT INTO historial_reservas (reserva_id, accion, detalles, usuario_id, created_at)
+    VALUES (%s, 'modificacion', %s, %s, NOW())
+    """, (reserva_id, json.dumps(detalles), current_user.id))
     
     logger.info(f"Reserva actualizada: {reserva_id} por {current_user.username}")
     
@@ -424,9 +428,9 @@ async def cambiar_estado(
         "motivo": estado_data.motivo or ""
     }
     await execute_update("""
-        INSERT INTO historial_reservas (reserva_id, accion, detalles, usuario_id, created_at, updated_at)
-        VALUES (%s, 'cambio_estado', %s, %s, NOW(), NOW())
-    """, (reserva_id, str(detalles).replace("'", '"'), current_user.id))
+        INSERT INTO historial_reservas (reserva_id, accion, detalles, usuario_id, created_at)
+        VALUES (%s, 'cambio_estado', %s, %s, NOW())
+    """, (reserva_id, json.dumps(detalles), current_user.id))
     
     logger.info(f"Reserva {reserva_id}: {estado_actual} -> {nuevo_estado} por {current_user.username}")
     
@@ -481,10 +485,13 @@ async def cancelar_reserva(
     )
     
     # Registrar en historial
+    detalles = {
+    "motivo": motivo or "Sin motivo"
+}
     await execute_update("""
-        INSERT INTO historial_reservas (reserva_id, accion, detalles, usuario_id, created_at, updated_at)
-        VALUES (%s, 'cancelacion', %s, %s, NOW(), NOW())
-    """, (reserva_id, '{"motivo": "' + (motivo or 'Sin motivo') + '"}', current_user.id))
+    INSERT INTO historial_reservas (reserva_id, accion, detalles, usuario_id, created_at)
+    VALUES (%s, 'cancelacion', %s, %s, NOW())
+    """, (reserva_id, json.dumps(detalles), current_user.id))
     
     # Actualizar estado de habitación
     await execute_update(
