@@ -369,25 +369,7 @@ sudo chown -R $USER:$USER .
 4. Push a la rama (`git push origin feature/nueva-funcionalidad`)
 5. Crear Pull Request
 
-## 📄 Licencia
-
-Este proyecto está bajo la licencia MIT.
 
 ## 👥 Autores
 
-- **Desarrollador Principal** - Arquitectura y desarrollo
-
-## 🙏 Agradecimientos
-
-- React Team
-- FastAPI Team
-- Django Team
-- Docker Team
-
----
-
-## 📞 Soporte
-
-Para soporte, enviar un email a soporte@hotel-management.com o crear un issue en el repositorio.
-
-**¡Gracias por usar nuestro Sistema de Gestión Hotelera! 🏨**
+- Grupo#5 -- Clase> Sistemas Expertos UNAH

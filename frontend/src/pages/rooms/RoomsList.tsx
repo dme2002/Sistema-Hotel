@@ -1,17 +1,24 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { BedDouble, Plus, Filter } from 'lucide-react';
+import { BedDouble, Plus, Filter, Search } from 'lucide-react';
 import { roomService } from '@/services/api';
 import type { Room } from '@/types';
 import { useAuthStore } from '@/store/authStore';
 import CreateRoomModal from '@/components/CreateRoomModal';
 
 const RoomsList = () => {
-  const { isAdmin } = useAuthStore();
+  const authStore = useAuthStore();
+  const isAdmin =
+    typeof authStore.isAdmin === 'function' ? authStore.isAdmin() : false;
+
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [filters, setFilters] = useState({ estado: '', piso: '' });
+  const [search, setSearch] = useState('');
+  const [filters, setFilters] = useState({
+    estado: '',
+    piso: '',
+  });
 
   useEffect(() => {
     loadRooms();
@@ -20,29 +27,32 @@ const RoomsList = () => {
   const loadRooms = async () => {
     try {
       setLoading(true);
+
       const params: any = {};
       if (filters.estado) params.estado = filters.estado;
-      if (filters.piso) params.piso = filters.piso;
+      if (filters.piso) params.piso = Number(filters.piso);
+
       const response = await roomService.getAll(params);
       setRooms(response.data.data || []);
     } catch (error) {
       console.error('Error loading rooms:', error);
+      setRooms([]);
     } finally {
       setLoading(false);
     }
   };
 
+  const filteredRooms = useMemo(() => {
+    const term = search.trim().toLowerCase();
+
+    if (!term) return rooms;
+
+    return rooms.filter((room) =>
+      String(room.numero ?? '').toLowerCase().includes(term)
+    );
+  }, [rooms, search]);
+
   const statusBadge = (room: Room) => {
-    const isActive = Boolean(room.activa);
-
-    if (!isActive) {
-      return (
-        <span className="px-2 py-1 rounded-lg text-xs font-semibold bg-red-100 text-red-700">
-          No disponible
-        </span>
-      );
-    }
-
     const styles: Record<string, string> = {
       disponible: 'bg-green-100 text-green-700',
       ocupada: 'bg-red-100 text-red-700',
@@ -57,16 +67,18 @@ const RoomsList = () => {
       limpieza: 'Limpieza',
     };
 
-  return (
-    <span
-      className={`px-2 py-1 rounded-lg text-xs font-semibold ${
-        styles[room.estado] || 'bg-gray-100 text-gray-600'
-      }`}
-    >
-      {labels[room.estado] || room.estado}
-    </span>
-  );
-};
+    const estado = room.estado || 'mantenimiento';
+
+    return (
+      <span
+        className={`px-2 py-1 rounded-lg text-xs font-semibold ${
+          styles[estado] || 'bg-gray-100 text-gray-600'
+        }`}
+      >
+        {labels[estado] || estado}
+      </span>
+    );
+  };
 
   if (loading) {
     return (
@@ -78,13 +90,13 @@ const RoomsList = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Habitaciones</h1>
           <p className="text-gray-500">Gestión de habitaciones del hotel</p>
         </div>
-        {isAdmin() && (
+
+        {isAdmin && (
           <button
             onClick={() => setIsCreateOpen(true)}
             className="btn-primary flex items-center gap-2"
@@ -95,44 +107,62 @@ const RoomsList = () => {
         )}
       </div>
 
-      {/* Modals */}
       <CreateRoomModal
         isOpen={isCreateOpen}
         onClose={() => setIsCreateOpen(false)}
         onSuccess={loadRooms}
       />
 
-      {/* Filters */}
       <div className="card p-4">
-        <div className="flex items-center gap-4">
-          <Filter className="w-5 h-5 text-gray-400" />
-          <select
-            value={filters.estado}
-            onChange={(e) => setFilters({ ...filters, estado: e.target.value })}
-            className="form-input w-48"
-          >
-            <option value="">Todos los estados</option>
-            <option value="disponible">Disponible</option>
-            <option value="ocupada">Ocupada</option>
-            <option value="mantenimiento">Mantenimiento</option>
-            <option value="limpieza">Limpieza</option>
-          </select>
-          <select
-            value={filters.piso}
-            onChange={(e) => setFilters({ ...filters, piso: e.target.value })}
-            className="form-input w-48"
-          >
-            <option value="">Todos los pisos</option>
-            {[1, 2, 3, 4].map((piso) => (
-              <option key={piso} value={piso}>Piso {piso}</option>
-            ))}
-          </select>
+        <div className="flex items-center gap-4 flex-wrap">
+          <div className="relative flex-1 min-w-[220px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar número de habitación"
+              className="form-input pl-10"
+            />
+          </div>
+
+          <div className="flex items-center gap-4 flex-wrap">
+            <Filter className="w-5 h-5 text-gray-400" />
+
+            <select
+              value={filters.estado}
+              onChange={(e) =>
+                setFilters((prev) => ({ ...prev, estado: e.target.value }))
+              }
+              className="form-input w-48"
+            >
+              <option value="">Todos los estados</option>
+              <option value="disponible">Disponible</option>
+              <option value="ocupada">Ocupada</option>
+              <option value="mantenimiento">Mantenimiento</option>
+              <option value="limpieza">Limpieza</option>
+            </select>
+
+            <select
+              value={filters.piso}
+              onChange={(e) =>
+                setFilters((prev) => ({ ...prev, piso: e.target.value }))
+              }
+              className="form-input w-48"
+            >
+              <option value="">Todos los pisos</option>
+              {[1, 2, 3, 4].map((piso) => (
+                <option key={piso} value={piso}>
+                  Piso {piso}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
-      {/* Rooms Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {rooms.map((room) => (
+        {filteredRooms.map((room) => (
           <Link
             key={room.id}
             to={`/rooms/${room.id}`}
@@ -154,7 +184,8 @@ const RoomsList = () => {
               <div className="flex items-center justify-between text-sm border-t pt-3">
                 <span className="text-gray-400">Piso {room.piso}</span>
                 <span className="font-bold text-blue-600">
-                  ${room.precio_actual}<span className="text-xs font-normal text-gray-400">/noche</span>
+                  ${room.precio_actual}
+                  <span className="text-xs font-normal text-gray-400">/noche</span>
                 </span>
               </div>
 
@@ -163,10 +194,11 @@ const RoomsList = () => {
                   👤 Capacidad: {room.capacidad_maxima} personas
                 </p>
               )}
+
               <p className="text-xs text-blue-400 mt-3 font-medium">
                 {!room.activa
                   ? 'Habitación desactivada'
-                  : isAdmin()
+                  : isAdmin
                   ? 'Clic para ver · editar · eliminar'
                   : 'Clic para ver detalles'}
               </p>
@@ -175,11 +207,15 @@ const RoomsList = () => {
         ))}
       </div>
 
-      {rooms.length === 0 && (
+      {filteredRooms.length === 0 && (
         <div className="text-center py-12">
           <BedDouble className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-1">No hay habitaciones</h3>
-          <p className="text-gray-500">No se encontraron habitaciones con los filtros seleccionados</p>
+          <h3 className="text-lg font-medium text-gray-900 mb-1">
+            No hay habitaciones
+          </h3>
+          <p className="text-gray-500">
+            No se encontraron habitaciones con los filtros seleccionados
+          </p>
         </div>
       )}
     </div>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   CalendarCheck,
@@ -15,6 +15,7 @@ const ReservationsList = () => {
   const { isAdmin, isRecepcionista } = useAuthStore();
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
   const [filters, setFilters] = useState({
     estado: '',
   });
@@ -25,17 +26,33 @@ const ReservationsList = () => {
 
   const loadReservations = async () => {
     try {
+      setLoading(true);
+
       const params: any = {};
       if (filters.estado) params.estado = filters.estado;
 
       const response = await reservationService.getAll(params);
-      setReservations(response.data.data);
+      setReservations(response.data.data || []);
     } catch (error) {
       console.error('Error loading reservations:', error);
+      setReservations([]);
     } finally {
       setLoading(false);
     }
   };
+
+  const filteredReservations = useMemo(() => {
+    const term = search.trim().toLowerCase();
+
+    if (!term) return reservations;
+
+    return reservations.filter((reservation) => {
+      const codigo = String(reservation.codigo_reserva ?? '').toLowerCase();
+      const cliente = String(reservation.cliente_nombre ?? '').toLowerCase();
+
+      return codigo.includes(term) || cliente.includes(term);
+    });
+  }, [reservations, search]);
 
   const getStatusBadge = (estado: string) => {
     const styles: Record<string, string> = {
@@ -45,6 +62,7 @@ const ReservationsList = () => {
       check_out: 'badge-gray',
       cancelada: 'badge-red',
     };
+
     const labels: Record<string, string> = {
       pendiente: 'Pendiente',
       confirmada: 'Confirmada',
@@ -52,7 +70,12 @@ const ReservationsList = () => {
       check_out: 'Check-out',
       cancelada: 'Cancelada',
     };
-    return <span className={styles[estado] || 'badge-gray'}>{labels[estado]}</span>;
+
+    return (
+      <span className={styles[estado] || 'badge-gray'}>
+        {labels[estado] || estado}
+      </span>
+    );
   };
 
   if (loading) {
@@ -71,6 +94,7 @@ const ReservationsList = () => {
           <h1 className="text-2xl font-bold text-gray-900">Reservas</h1>
           <p className="text-gray-500">Gestión de reservas del hotel</p>
         </div>
+
         {(isAdmin() || isRecepcionista()) && (
           <Link
             to="/reservations/create"
@@ -84,20 +108,35 @@ const ReservationsList = () => {
 
       {/* Filters */}
       <div className="card p-4">
-        <div className="flex items-center gap-4">
-          <Filter className="w-5 h-5 text-gray-400" />
-          <select
-            value={filters.estado}
-            onChange={(e) => setFilters({ ...filters, estado: e.target.value })}
-            className="form-input w-48"
-          >
-            <option value="">Todos los estados</option>
-            <option value="pendiente">Pendiente</option>
-            <option value="confirmada">Confirmada</option>
-            <option value="check_in">Check-in</option>
-            <option value="check_out">Check-out</option>
-            <option value="cancelada">Cancelada</option>
-          </select>
+        <div className="flex items-center gap-4 flex-wrap">
+          <div className="relative flex-1 min-w-[240px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Buscar por cliente o código"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="form-input pl-10"
+            />
+          </div>
+
+          <div className="flex items-center gap-4">
+            <Filter className="w-5 h-5 text-gray-400" />
+            <select
+              value={filters.estado}
+              onChange={(e) =>
+                setFilters((prev) => ({ ...prev, estado: e.target.value }))
+              }
+              className="form-input w-48"
+            >
+              <option value="">Todos los estados</option>
+              <option value="pendiente">Pendiente</option>
+              <option value="confirmada">Confirmada</option>
+              <option value="check_in">Check-in</option>
+              <option value="check_out">Check-out</option>
+              <option value="cancelada">Cancelada</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -118,7 +157,7 @@ const ReservationsList = () => {
               </tr>
             </thead>
             <tbody>
-              {reservations.map((reservation) => (
+              {filteredReservations.map((reservation) => (
                 <tr key={reservation.id}>
                   <td className="font-medium">{reservation.codigo_reserva}</td>
                   <td>{reservation.cliente_nombre}</td>
@@ -144,7 +183,7 @@ const ReservationsList = () => {
         </div>
       </div>
 
-      {reservations.length === 0 && (
+      {filteredReservations.length === 0 && (
         <div className="text-center py-12">
           <CalendarCheck className="w-16 h-16 text-gray-300 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-1">

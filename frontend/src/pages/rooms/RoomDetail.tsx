@@ -32,7 +32,7 @@ type RoomDetailApiResponse = {
     precio_actual: number;
     descripcion?: string;
     caracteristicas?: Record<string, unknown>;
-    activa: boolean;
+    activa: boolean | number;
   };
 };
 
@@ -113,7 +113,7 @@ const RoomDetail = () => {
         precio_actual: rawRoom.precio_actual,
         descripcion: rawRoom.descripcion,
         caracteristicas: rawRoom.caracteristicas,
-        activa: rawRoom.activa,
+        activa: Boolean(rawRoom.activa),
       };
 
       setRoom(normalizedRoom);
@@ -125,59 +125,86 @@ const RoomDetail = () => {
     }
   };
 
-  const handleDelete = async () => {
+  const handleDeactivate = async () => {
     if (!room || !confirm('¿Está seguro de desactivar esta habitación?')) return;
 
     try {
-      await roomService.delete(room.id);
-      navigate('/rooms');
+      await roomService.update(room.id, {
+        activa: false,
+        estado: 'mantenimiento',
+      });
+
+      setRoom({
+        ...room,
+        activa: false,
+        estado: 'mantenimiento',
+      });
     } catch (error) {
-      console.error('Error deleting room:', error);
+      console.error('Error deactivating room:', error);
+    }
+  };
+
+  const handleActivate = async () => {
+    if (!room) return;
+
+    try {
+      await roomService.update(room.id, {
+        activa: true,
+        estado: 'disponible',
+      });
+
+      setRoom({
+        ...room,
+        activa: true,
+        estado: 'disponible',
+      });
+    } catch (error) {
+      console.error('Error activating room:', error);
     }
   };
 
   const getStatusIcon = (estado: string, activa: boolean) => {
-  if (!activa) {
-    return <XCircle className="w-5 h-5 text-red-500" />;
-  }
-
-  switch (estado) {
-    case 'disponible':
-      return <CheckCircle className="w-5 h-5 text-green-500" />;
-    case 'ocupada':
+    if (!activa) {
       return <XCircle className="w-5 h-5 text-red-500" />;
-    case 'mantenimiento':
-      return <Wrench className="w-5 h-5 text-yellow-500" />;
-    case 'limpieza':
-      return <Sparkles className="w-5 h-5 text-blue-500" />;
-    default:
-      return null;
     }
-  };;
+
+    switch (estado) {
+      case 'disponible':
+        return <CheckCircle className="w-5 h-5 text-green-500" />;
+      case 'ocupada':
+        return <XCircle className="w-5 h-5 text-red-500" />;
+      case 'mantenimiento':
+        return <Wrench className="w-5 h-5 text-yellow-500" />;
+      case 'limpieza':
+        return <Sparkles className="w-5 h-5 text-blue-500" />;
+      default:
+        return null;
+    }
+  };
 
   const getStatusBadge = (estado: string, activa: boolean) => {
-  if (!activa) {
-    return <span className="badge-red">No disponible</span>;
-  }
+    if (!activa) {
+      return <span className="badge-red">No disponible</span>;
+    }
 
-  const styles: Record<string, string> = {
-    disponible: 'badge-green',
-    ocupada: 'badge-red',
-    mantenimiento: 'badge-yellow',
-    limpieza: 'badge-blue',
+    const styles: Record<string, string> = {
+      disponible: 'badge-green',
+      ocupada: 'badge-red',
+      mantenimiento: 'badge-yellow',
+      limpieza: 'badge-blue',
     };
 
-  const labels: Record<string, string> = {
-    disponible: 'Disponible',
-    ocupada: 'Ocupada',
-    mantenimiento: 'Mantenimiento',
-    limpieza: 'Limpieza',
+    const labels: Record<string, string> = {
+      disponible: 'Disponible',
+      ocupada: 'Ocupada',
+      mantenimiento: 'Mantenimiento',
+      limpieza: 'Limpieza',
     };
 
-  return (
-    <span className={styles[estado] || 'badge-gray'}>
-      {labels[estado] || estado}
-    </span>
+    return (
+      <span className={styles[estado] || 'badge-gray'}>
+        {labels[estado] || estado}
+      </span>
     );
   };
 
@@ -222,13 +249,23 @@ const RoomDetail = () => {
 
         {isAdmin && (
           <div className="flex items-center gap-2">
-            <button
-              onClick={handleDelete}
-              className="btn-danger flex items-center gap-2"
-            >
-              <Trash2 className="w-4 h-4" />
-              Desactivar
-            </button>
+            {room.activa ? (
+              <button
+                onClick={handleDeactivate}
+                className="btn-danger flex items-center gap-2"
+              >
+                <Trash2 className="w-4 h-4" />
+                Desactivar
+              </button>
+            ) : (
+              <button
+                onClick={handleActivate}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors"
+              >
+                <CheckCircle className="w-4 h-4" />
+                Activar
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -269,7 +306,9 @@ const RoomDetail = () => {
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Estado</p>
-                  <div className="mt-1">{getStatusBadge(room.estado, Boolean(room.activa))}</div>
+                  <div className="mt-1">
+                    {getStatusBadge(room.estado, Boolean(room.activa))}
+                  </div>
                 </div>
               </div>
 
@@ -347,7 +386,10 @@ const RoomDetail = () => {
                 </h3>
               </div>
               <div className="card-body space-y-2">
-                <button className="w-full btn-secondary flex items-center justify-center gap-2">
+                <button
+                  onClick={() => navigate(`/rooms/${room.id}/edit`)}
+                  className="w-full btn-secondary flex items-center justify-center gap-2"
+                >
                   <Edit className="w-4 h-4" />
                   Editar Habitación
                 </button>
