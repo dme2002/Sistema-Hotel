@@ -209,46 +209,69 @@ async def update_habitacion(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Habitación no encontrada"
         )
-    
+
+    # Validar número repetido si se está actualizando
+    if habitacion_data.numero is not None:
+        existente = await execute_one(
+            "SELECT id FROM habitaciones WHERE numero = %s AND id != %s",
+            (habitacion_data.numero, habitacion_id)
+        )
+        if existente:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Ya existe una habitación con este número"
+            )
+
     # Construir query de actualización
     update_fields = []
     params = []
-    
+
+    if habitacion_data.numero is not None:
+        update_fields.append("numero = %s")
+        params.append(habitacion_data.numero)
+
     if habitacion_data.tipo_id is not None:
         update_fields.append("tipo_id = %s")
         params.append(habitacion_data.tipo_id)
+
     if habitacion_data.piso is not None:
         update_fields.append("piso = %s")
         params.append(habitacion_data.piso)
+
     if habitacion_data.estado is not None:
         update_fields.append("estado = %s")
         params.append(habitacion_data.estado)
+
     if habitacion_data.precio_actual is not None:
         update_fields.append("precio_actual = %s")
         params.append(habitacion_data.precio_actual)
+
     if habitacion_data.descripcion is not None:
         update_fields.append("descripcion = %s")
         params.append(habitacion_data.descripcion)
+
     if habitacion_data.caracteristicas is not None:
+        import json
         update_fields.append("caracteristicas = %s")
-        params.append(str(habitacion_data.caracteristicas).replace("'", '"'))
+        params.append(json.dumps(habitacion_data.caracteristicas))
+
     if habitacion_data.activa is not None:
         update_fields.append("activa = %s")
         params.append(habitacion_data.activa)
-    
+
     if not update_fields:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="No hay campos para actualizar"
         )
-    
+
     query = f"UPDATE habitaciones SET {', '.join(update_fields)} WHERE id = %s"
     params.append(habitacion_id)
-    
+
     await execute_update(query, tuple(params))
-    
+
     logger.info(f"Habitación actualizada: {habitacion_id} por {current_user.username}")
-    
+
     return {
         "status": "success",
         "message": "Habitación actualizada exitosamente"

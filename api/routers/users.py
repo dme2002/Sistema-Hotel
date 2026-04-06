@@ -215,60 +215,83 @@ async def update_user(
         )
 
     # Verificar que el usuario existe
-    user = await execute_one("SELECT id, username FROM usuarios WHERE id = %s", (user_id,))
+    user = await execute_one(
+        "SELECT id, username, email FROM usuarios WHERE id = %s",
+        (user_id,)
+    )
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Usuario no encontrado"
         )
-    
+
     # Restricciones para no-admins
     if current_user.rol.nombre != 'admin':
         # No pueden cambiar su rol
         user_data.rol_id = None
         # No pueden cambiar su estado de activo
         user_data.is_active = None
-    
+
     # No permitir desactivarse a sí mismo (incluso para admins)
     if user_id == current_user.id and user_data.is_active is False:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="No puede desactivar su propio usuario"
         )
-    
+
+    # Validar email repetido si se intenta cambiar
+    if user_data.email is not None:
+        existing_email = await execute_one(
+            "SELECT id FROM usuarios WHERE email = %s AND id != %s",
+            (user_data.email, user_id)
+        )
+        if existing_email:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="El correo ya está en uso por otro usuario"
+            )
+
     # Construir query de actualización
     update_fields = []
     params = []
-    
+
     if user_data.nombres is not None:
         update_fields.append("nombres = %s")
         params.append(user_data.nombres)
+
     if user_data.apellidos is not None:
         update_fields.append("apellidos = %s")
         params.append(user_data.apellidos)
+
+    if user_data.email is not None:
+        update_fields.append("email = %s")
+        params.append(user_data.email)
+
     if user_data.telefono is not None:
         update_fields.append("telefono = %s")
         params.append(user_data.telefono)
+
     if user_data.rol_id is not None:
         update_fields.append("rol_id = %s")
         params.append(user_data.rol_id)
+
     if user_data.is_active is not None:
         update_fields.append("activo = %s")
         params.append(user_data.is_active)
-    
+
     if not update_fields:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="No hay campos para actualizar"
         )
-    
+
     query = f"UPDATE usuarios SET {', '.join(update_fields)}, updated_at = NOW() WHERE id = %s"
     params.append(user_id)
-    
+
     await execute_update(query, tuple(params))
-    
+
     logger.info(f"Usuario actualizado: {user_id} por {current_user.username}")
-    
+
     return {
         "status": "success",
         "message": "Usuario actualizado exitosamente"

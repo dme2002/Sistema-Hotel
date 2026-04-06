@@ -5,7 +5,7 @@ import { authService } from '@/services/api';
 
 const Register = () => {
   const navigate = useNavigate();
-  
+
   const [formData, setFormData] = useState({
     username: '',
     email: '',
@@ -19,12 +19,16 @@ const Register = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  const handleTelefonoChange = (value: string) => {
+    const cleanedValue = value.replace(/[^0-9+\-()\s]/g, '');
+    setFormData({ ...formData, telefono: cleanedValue });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
 
-    // Validar contraseñas
     if (formData.password !== formData.confirmar_password) {
       setError('Las contraseñas no coinciden');
       setLoading(false);
@@ -37,15 +41,24 @@ const Register = () => {
       return;
     }
 
+    if (
+      formData.telefono &&
+      !/^\+?[0-9()\-\s]+$/.test(formData.telefono)
+    ) {
+      setError('El teléfono solo puede contener números y símbolos válidos como +, -, espacios y paréntesis');
+      setLoading(false);
+      return;
+    }
+
     try {
       await authService.register(formData);
-      navigate('/login', { 
-        state: { message: 'Registro exitoso. Inicie sesión.' }
+      navigate('/login', {
+        state: { message: 'Registro exitoso. Inicie sesión.' },
       });
     } catch (err: any) {
       setError(
-        err.response?.data?.message || 
-        'Error al registrar. Intente nuevamente.'
+        err.response?.data?.message ||
+          'Error al registrar. Intente nuevamente.'
       );
     } finally {
       setLoading(false);
@@ -130,11 +143,11 @@ const Register = () => {
           <input
             type="tel"
             value={formData.telefono}
-            onChange={(e) =>
-              setFormData({ ...formData, telefono: e.target.value })
-            }
+            onChange={(e) => handleTelefonoChange(e.target.value)}
             className="form-input"
-            placeholder="+1234567890"
+            placeholder="+504 9999-9999"
+            inputMode="tel"
+            maxLength={20}
           />
         </div>
 
@@ -162,7 +175,10 @@ const Register = () => {
                 type={showPassword ? 'text' : 'password'}
                 value={formData.confirmar_password}
                 onChange={(e) =>
-                  setFormData({ ...formData, confirmar_password: e.target.value })
+                  setFormData({
+                    ...formData,
+                    confirmar_password: e.target.value,
+                  })
                 }
                 className="form-input pr-10"
                 placeholder="Repita la contraseña"

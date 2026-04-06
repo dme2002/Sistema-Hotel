@@ -61,6 +61,7 @@ class UserUpdate(BaseModel):
     """Modelo para actualizar usuario."""
     nombres: Optional[str] = None
     apellidos: Optional[str] = None
+    email: Optional[EmailStr] = None
     telefono: Optional[str] = None
     rol_id: Optional[int] = None
     is_active: Optional[bool] = None
