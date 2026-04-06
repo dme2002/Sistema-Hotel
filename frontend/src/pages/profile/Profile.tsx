@@ -10,15 +10,27 @@ const Profile = () => {
   const [formData, setFormData] = useState({
     nombres: user?.nombres || '',
     apellidos: user?.apellidos || '',
+    email: user?.email || '',
     telefono: user?.telefono || '',
   });
+
+  const handleTelefonoChange = (value: string) => {
+    const cleanedValue = value.replace(/[^0-9+\-()\s]/g, '');
+    setFormData({ ...formData, telefono: cleanedValue });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
-    
+
     setLoading(true);
     setMessage('');
+
+    if (!formData.email.trim()) {
+      setMessage('El correo es obligatorio');
+      setLoading(false);
+      return;
+    }
 
     try {
       await userService.update(user.id, formData);
@@ -42,15 +54,12 @@ const Profile = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Mi Perfil</h1>
         <p className="text-gray-500">Gestione su información personal</p>
       </div>
 
-      {/* Profile Info */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Profile Card */}
         <div className="card">
           <div className="card-body text-center">
             <div className="w-24 h-24 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -64,16 +73,16 @@ const Profile = () => {
               {user.nombres} {user.apellidos}
             </h3>
             <p className="text-gray-500 capitalize">{user.rol?.nombre}</p>
-            
+
             <div className="mt-6 space-y-3 text-left">
               <div className="flex items-center gap-3 text-gray-600">
                 <Mail className="w-5 h-5" />
-                <span>{user.email}</span>
+                <span>{formData.email || user.email}</span>
               </div>
-              {user.telefono && (
+              {formData.telefono && (
                 <div className="flex items-center gap-3 text-gray-600">
                   <Phone className="w-5 h-5" />
-                  <span>{user.telefono}</span>
+                  <span>{formData.telefono}</span>
                 </div>
               )}
               <div className="flex items-center gap-3 text-gray-600">
@@ -89,7 +98,6 @@ const Profile = () => {
           </div>
         </div>
 
-        {/* Edit Form */}
         <div className="lg:col-span-2">
           <div className="card">
             <div className="card-header">
@@ -137,14 +145,28 @@ const Profile = () => {
                 </div>
 
                 <div>
+                  <label className="form-label">Correo electrónico</label>
+                  <input
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) =>
+                      setFormData({ ...formData, email: e.target.value })
+                    }
+                    className="form-input"
+                    placeholder="correo@ejemplo.com"
+                  />
+                </div>
+
+                <div>
                   <label className="form-label">Teléfono</label>
                   <input
                     type="tel"
                     value={formData.telefono}
-                    onChange={(e) =>
-                      setFormData({ ...formData, telefono: e.target.value })
-                    }
+                    onChange={(e) => handleTelefonoChange(e.target.value)}
                     className="form-input"
+                    placeholder="+504 9999-9999"
+                    inputMode="tel"
+                    maxLength={20}
                   />
                 </div>
 

@@ -29,26 +29,35 @@ api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     const originalRequest = error.config;
-    
-    // Token expirado
-    if (error.response?.status === 401) {
+    const requestUrl = originalRequest?.url || '';
+
+    const isPublicAuthRoute =
+      requestUrl.includes('/auth/login') ||
+      requestUrl.includes('/auth/register');
+
+    // Ignorar 401 del login/register para que el componente maneje el error
+    if (error.response?.status === 401 && !isPublicAuthRoute) {
       const { refreshToken, logout, setTokens } = useAuthStore.getState();
-      
+
       if (refreshToken && originalRequest) {
         try {
-          // Intentar refresh
-          const response = await axios.post(`${API_URL}/auth/refresh`, {}, {
-            headers: { Authorization: `Bearer ${refreshToken}` }
-          });
-          
+          const response = await axios.post(
+            `${API_URL}/auth/refresh`,
+            {},
+            {
+              headers: { Authorization: `Bearer ${refreshToken}` },
+            }
+          );
+
           const { access_token, refresh_token } = response.data.data;
           setTokens(access_token, refresh_token);
-          
-          // Reintentar request original
-          originalRequest.headers.Authorization = `Bearer ${access_token}`;
+
+          if (originalRequest.headers) {
+            originalRequest.headers.Authorization = `Bearer ${access_token}`;
+          }
+
           return api(originalRequest);
         } catch (refreshError) {
-          // Refresh falló, logout
           logout();
           window.location.href = '/login';
           return Promise.reject(refreshError);
@@ -58,7 +67,7 @@ api.interceptors.response.use(
         window.location.href = '/login';
       }
     }
-    
+
     return Promise.reject(error);
   }
 );

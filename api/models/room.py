@@ -50,6 +50,7 @@ class HabitacionCreate(HabitacionBase):
 
 class HabitacionUpdate(BaseModel):
     """Modelo para actualizar habitación."""
+    numero: Optional[str] = Field(default=None, min_length=1, max_length=10)
     tipo_id: Optional[int] = None
     piso: Optional[int] = None
     estado: Optional[EstadoHabitacion] = None
